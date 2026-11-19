@@ -100,7 +100,7 @@ carpeta_trabajo\
 ```bat
 python calcular_isp.py energ_mat.csv --salida bkw_default.csv
 ```
-Los datos de energ_mat.csv han sido provienen de:
+Los datos de energ_mat.csv provienen de:
 Frem, D. (2018). A Reliable Method for Predicting the Specific Impulse of Chemical Propellants.
 Journal of Aerospace Technology and Management, 10, e3318. DOI: 10.5028/jatm.v10.945
 (https://doi.org/10.5028/jatm.v10.945).
