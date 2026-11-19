@@ -1,0 +1,18 @@
+# Plantilla para crear nuevo fichero
+1
+# Añadir un mol del explosivo zzcomps
+3
+# Nombre del explosivo añadido de zzcomps
+exp1
++
+exp1
++
+# Parámetros BKW (1 RDX 2 TNT 4 Default)
+4
++
++
++
++
++
+# Nombre del fichero
+exp1

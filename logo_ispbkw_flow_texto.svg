@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120" width="520" height="120" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>ispbkw_flow</title>
+  <g stroke="#e07a2f" stroke-width="2.2">
+    <path d="M30 60 H232"/>
+    <path d="M30 42 C70 42 92 54 110 54 C140 54 182 40 226 26"/>
+    <path d="M30 78 C70 78 92 66 110 66 C140 66 182 80 226 94"/>
+  </g>
+  <g stroke="#4f7aa3" stroke-width="4">
+    <path d="M20 25 H68 C90 25 94 47 110 47 C136 47 180 30 220 12"/>
+    <path d="M20 95 H68 C90 95 94 73 110 73 C136 73 180 90 220 108"/>
+    <path d="M20 25 V95"/>
+  </g>
+  <text x="255" y="72" fill="#4f7aa3" stroke="none" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="34">ispbkw<tspan fill="#e07a2f">_flow</tspan></text>
+</svg>

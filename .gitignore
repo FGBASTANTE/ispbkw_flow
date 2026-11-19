@@ -1,0 +1,25 @@
+# No subir ninguna carpeta: solo los ficheros de esta carpeta
+*/
+
+# Salidas generadas por el flujo
+userdata/
+resultados/
+*.out
+
+# Ficheros temporales de bkw
+bkwdata
+isp.out
+
+# Python
+__pycache__/
+*.pyc
+
+# Entorno de pixi
+.pixi/
+
+# Ejecutables
+*.exe
+
+# Datos de Mader
+ZZZTHERC
+ZZZSOLEQ
