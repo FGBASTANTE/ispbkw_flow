@@ -1,12 +1,15 @@
 <p align="center">
   <img src="logo_ispbkw_flow_texto.svg" alt="ispbkw_flow" width="440">
 </p>
-# ispbkw_flow
- 
-*Batch specific-impulse calculations with Mader's ISPBKW code: from a CSV
-of propellants to clear result tables.*
 
-# Utilidades para calcular el impulso específico con ISPBKW (código BKW de Mader)
+# ispbkw_flow
+
+*Batch specific-impulse calculations with Mader's ISPBKW code, from a CSV
+of propellants to clear result tables, with NASA CEA (RocketCEA) for
+comparison.*
+
+Utilidades para calcular el impulso específico con ISPBKW (código BKW de
+Mader).
 
 Conjunto de scripts para calcular por lotes el impulso específico de
 explosivos y propelentes con **ISPBKW**, la versión del código BKW de
@@ -23,7 +26,7 @@ Los scripts automatizan las cuatro etapas del proceso:
 > **Importante.** USERBKW, ISPBKW y sus bases de datos (`zzztherc`,
 > `zzzsoleq`...) son © Mader Consulting Co. y **no se incluyen en este
 > repositorio**. Los códigos de Mader se distribuyen, en FORTRAN y
-> ejecutables, en el CD-ROM de su libro (ver [Referencias](#referencias)).
+> ejecutables, en el CD-ROM de su libro (ver Referencias)
 
 ---
 
@@ -38,6 +41,7 @@ Los scripts automatizan las cuatro etapas del proceso:
 | `plantilla_userbkw.txt` | Texto | Respuestas que se envían a USERBKW por la entrada estándar para crear el fichero de entrada de un propelente. |
 | `procesar_ispbkw.ps1` | PowerShell | Ejecuta USERBKW e ISPBKW para cada propelente `expN` y, opcionalmente, el extractor. |
 | `extraer_composicion.py` | Python | Revisa los `.out` de ISPBKW (errores y avisos de convergencia) y genera `resultados.csv`. |
+| `impulso_cea.py` | Python | Cálculo independiente con NASA CEA (RocketCEA) a partir del mismo CSV, con funciones de comparación y análisis (ver [Cálculo con NASA CEA](#cálculo-con-nasa-cea-impulso_ceapy)). |
 
 Programas y ficheros de terceros necesarios (no incluidos):
 
@@ -57,6 +61,8 @@ Programas y ficheros de terceros necesarios (no incluidos):
   `extraer_composicion.py` solo usa la biblioteca estándar.
 - Los scripts de Python deben estar en la misma carpeta (se importan
   entre sí).
+- Solo para `impulso_cea.py`: **RocketCEA**, **numpy** y **matplotlib**.
+  El flujo de ISPBKW no los necesita.
 
 ---
 
@@ -66,7 +72,7 @@ Programas y ficheros de terceros necesarios (no incluidos):
 energ_mat.csv                       CSV con Formula y DeltaH (kcal/mol, 298,15 K)
    │  eo_0k.py
    ▼
-Impulso_data_eo0K.txt                  + columnas eo_ISPBKW y DeltaH_0K_est
+energ_mat_eo0K.csv                  + columnas eo_ISPBKW y DeltaH_0K_est
    │  zzzcomps.py --columna eo_ISPBKW
    ▼
 zzzcomps, zzzcomps_nombres.csv         exp1 ... expN y su correspondencia
@@ -98,12 +104,8 @@ carpeta_trabajo\
 ### Ejecución completa con `calcular_isp.py`
 
 ```bat
-python calcular_isp.py energ_mat.csv --salida bkw_default.csv
+python calcular_isp.py energ_mat.csv --trabajo C:\bkw
 ```
-Los datos de energ_mat.csv provienen de:
-Frem, D. (2018). A Reliable Method for Predicting the Specific Impulse of Chemical Propellants.
-Journal of Aerospace Technology and Management, 10, e3318. DOI: 10.5028/jatm.v10.945
-(https://doi.org/10.5028/jatm.v10.945).
 
 `--trabajo` es la carpeta con `userbkw.exe`, `abispbkw.exe`, `zzztherc` y
 `zzzsoleq`; si en ella faltan `procesar_ispbkw.ps1` o `plantilla_userbkw.txt`, se
@@ -192,8 +194,8 @@ punto decimal; para revisar a simple vista, el libro Excel.
 ### Ejecución paso a paso
 
 ```bat
-python eo_0k.py energ_mat.csv --salida Impulso_data_eo0K.txt
-python zzzcomps.py Impulso_data_eo0K.txt --columna eo_ISPBKW --salida zzzcomps
+python eo_0k.py energ_mat.csv --salida energ_mat_eo0K.csv
+python zzzcomps.py energ_mat_eo0K.csv --columna eo_ISPBKW --salida zzzcomps
 powershell -ExecutionPolicy Bypass -File .\procesar_ispbkw.ps1 -Extraer
 ```
 
@@ -261,7 +263,7 @@ CO2, CO, HCl), lo que confirma que ISPBKW usa los elementos a 0 K como
 referencia.
 
 ```bat
-python eo_0k.py energ_mat.csv --salida Impulso_data_eo0K.txt
+python eo_0k.py energ_mat.csv --salida energ_mat_eo0K.csv
 ```
 
 Columnas añadidas:
@@ -280,7 +282,7 @@ referida a los elementos a 0 K.
 ## Paso 2. `zzzcomps.py`: base de componentes de USERBKW
 
 ```bat
-python zzzcomps.py Impulso_data_eo0K.txt --columna eo_ISPBKW --salida zzzcomps
+python zzzcomps.py energ_mat_eo0K.csv --columna eo_ISPBKW --salida zzzcomps
 ```
 
 | Opción | Por defecto | Descripción |
@@ -350,7 +352,7 @@ Antes de calcular, el script se detiene con un mensaje si:
 
 Para cada caso `expN`:
 
-1. Envía a `userbkw.exe` las líneas de `plantilla_userbkw` que no son
+1. Envía a `userbkw.exe` las líneas de `plantilla_userbkw.txt` que no son
    comentarios, sustituyendo cada línea `exp1` por `expN`. USERBKW
    genera el fichero de entrada `expN`, que se mueve a `userdata\`.
 2. Sustituye la primera línea de `userdata\expN` por
@@ -364,7 +366,7 @@ Para cada caso `expN`:
    `subroutine getcomps`), así que a veces la escribe con un valor
    absurdo (se ha observado 1,1·10⁻³¹ g/cm³). Con él, ISPBKW no
    converge: tarda mucho y da NaN. Con un solo componente (1 mol, como
-   en `plantilla_userbkw`), la densidad correcta es la de `zzzcomps`. La
+   en `plantilla_userbkw.txt`), la densidad correcta es la de `zzzcomps`. La
    sustitución solo se hace si los moles del fichero coinciden con los
    del componente; si no, se avisa y el fichero no se toca. Cada
    corrección se indica en pantalla.
@@ -386,7 +388,7 @@ El script **no sobrescribe**: si ya existe `userdata\expN` o
 caso concreto hay que borrar antes sus ficheros; para repetir todo,
 `-Reiniciar`.
 
-### `plantilla_userbkw`
+### `plantilla_userbkw.txt`
 
 Las líneas que empiezan por `#` son comentarios y no se envían.
 
@@ -470,6 +472,82 @@ sensible.
 
 ---
 
+## Cálculo con NASA CEA (`impulso_cea.py`)
+
+Calcula el mismo CSV con NASA CEA a través de RocketCEA, de forma
+independiente del flujo de ISPBKW. Cada propelente se define como
+monopropelente a 298,15 K con su `DeltaH` (CEA usa esa referencia, sin
+conversión a 0 K) y se expande desde la cámara hasta la salida con dos
+hipótesis: equilibrio (`Equilibrium`) y composición congelada desde la
+cámara (`Frozen`).
+
+```bat
+python impulso_cea.py energ_mat.csv [--salida FICHERO] [--pc-bar 68.9476] [--pe-bar 1.01325] [--pamb-bar P]
+    [--col-compuesto Compuesto] [--col-formula Formula] [--col-deltah DeltaH]
+```
+
+Como en `calcular_isp.py`, las columnas de compuesto (opcional),
+fórmula y entalpía se llaman por defecto `Compuesto`, `Formula` y
+`DeltaH`, y con `--col-…` (o `col_compuesto`, `col_formula`,
+`col_deltah` en `calcular_cea` y `barrido_pc`) se indican otros nombres.
+La salida conserva los nombres originales.
+
+Por defecto: cámara a 1000 psi (68,9476 bar), salida a 1 atm y presión
+ambiente igual a la de salida (tobera adaptada). El impulso se calcula de
+dos formas que deben coincidir con tobera adaptada: `ve = √(2·(hc − he))`
+y la función `estimate_Ambient_Isp` de RocketCEA.
+
+Columnas principales de la salida (`<h>` = `Equilibrium` o `Frozen`):
+
+| Columna | Unidad | Contenido |
+|---|---|---|
+| `Ve_CEA_<h>` | km/s | Velocidad de escape (= Isp en N·s/g). |
+| `Isp_CEA_<h>_s` | s | `ve / g0`. |
+| `Isp_amb_<h>_s`, `Isp_amb_<h>_kms` | s, km/s | Isp de `estimate_Ambient_Isp` a la presión ambiente. |
+| `Modo_tobera_<h>`, `eps_<h>` | – | Régimen de la tobera y relación de áreas Ae/At. |
+| `T_chamber`, `T_exit_<h>` | K | Temperaturas de cámara y de salida. |
+| `h_c_kJ_kg`, `h_e_<h>_kJ_kg`, `Q_c_kJ_kg`, `Q_e_<h>_kJ_kg` | kJ/kg | Balance de energía (entalpías absolutas y calor liberado). |
+| `Comp_Chamber`, `Comp_Exit_Eq` | – | Fracciones molares de los productos (JSON). |
+| `n_gas_…`, `n_cond_…`, `M_gas_…`, `fm_gas_…` | mol/kg, g/mol, – | Composición por fases en cámara y salida. |
+
+Funciones disponibles desde Python:
+
+| Función | Uso |
+|---|---|
+| `calcular_cea(ruta, pc_bar, pe_bar, pamb_bar, col_…)` | Calcula todos los propelentes de un CSV. |
+| `calcular(nombre, formula, dh, pc_bar, pe_bar)` | Calcula un solo propelente. |
+| `balance_energia(formula, dh, ...)` | Imprime y devuelve el balance de energía cámara → salida. |
+| `estadisticos(real, pred)` | Sesgo, MAE, RMSE, R², error máximo y ajuste lineal entre dos series. |
+| `metricas(df, ref)` | Estadísticos de `Ve_CEA_<h>` e `Isp_amb_<h>_kms` frente a una columna de referencia. |
+| `graficar_comparacion(df, ref, pred, ...)` | Gráfico de paridad con estadísticos. |
+| `barrido_pc(ruta, pcs, ...)` | Estadísticos frente a la referencia para varias presiones de cámara. |
+| `mapa_correlaciones(df, ...)` | Correlaciones entre energías, composición e Isp. |
+| `barrido_composicion(al, htpb, ...)` | Propelentes AP/Al/HTPB con contenido de Al variable. |
+| `barrido_mr(ox, fuel, mr, ...)`, `graficar_mr(df, ...)` | Biergol frente a la relación de mezcla O/F. |
+
+### Comparabilidad con ISPBKW
+
+| | ISPBKW | CEA (`impulso_cea.py`) |
+|---|---|---|
+| Presión de cámara | 68,9473 bar | 68,9476 bar (1000 psi) |
+| Presión de salida | 1,01325 bar | 1,01325 bar |
+| Tobera | adaptada | adaptada (por defecto) |
+| Química en la expansión | equilibrio | equilibrio y congelada |
+| Estado inicial del propelente | 298,15 K (`eo_ISPBKW`) | 298,15 K (`DeltaH`) |
+| Ecuación de estado de los gases | BKW | gas ideal |
+| Datos termodinámicos | `zzztherc`, `zzzsoleq` | `thermo.inp` (NASA) |
+| Constante del impulso | 9,330 (0,02 % sobre √(2·4184)/g0) | `ve / g0` |
+| Trabajo `pc·v0` del propelente | incluido (≈ 0,05 % con 1 g/cm³) | no |
+
+Con los valores por defecto, las condiciones coinciden (la diferencia de
+presión de cámara es de 4·10⁻⁶ en términos relativos). Las diferencias
+entre ambos resultados proceden de la ecuación de estado y de los datos
+termodinámicos de los productos. Si se cambian las presiones de
+`impulso_cea.py`, deja de ser comparable con ISPBKW, cuyas presiones son
+fijas.
+
+---
+
 ## Condiciones de cálculo y unidades de ISPBKW
 
 | Magnitud | Valor | Dónde |
@@ -484,6 +562,8 @@ Para cambiar las presiones hay que modificar `pc` y `pe` en
 `subroutine isp` (en Mbar) y recompilar.
 
 Conversión a km/s (N·s/g): `Isp [km/s] = ISP [s] · 9,80665 / 1000`.
+No debe usarse `ISP / 100`: da valores parecidos, pero con un error
+sistemático del 1,9 %.
 
 ---
 
@@ -498,7 +578,7 @@ Conversión a km/s (N·s/g): `Isp [km/s] = ISP [s] · 9,80665 / 1000`.
   sólidos.
 - **Densidad en USERBKW**: el error de inicialización descrito en el
   paso 3 está en el propio USERBKW. El script lo corrige para ficheros
-  de un componente; con varios componentes (otro `plantilla_userbkw`) hay que
+  de un componente; con varios componentes (otro `plantilla_userbkw.txt`) hay que
   revisar la densidad a mano o corregir USERBKW (iniciar `totwht` y
   `totvol` a cero en `getcomps`) y recompilarlo.
 - **Especies 19 y 20**: la subrutina `isp` sustituye siempre sus
@@ -521,6 +601,19 @@ Conversión a km/s (N·s/g): `Isp [km/s] = ISP [s] · 9,80665 / 1000`.
 
 ## Referencias
 
+- C. Taylor, *RocketCEA: Python wrapper for the NASA CEA code*, v1.2.3,
+  2026. Código: https://github.com/sonofeft/RocketCEA ·
+  Documentación: https://rocketcea.readthedocs.io ·
+  PyPI: https://pypi.org/project/rocketcea/
+- S. Gordon y B. J. McBride, *Computer Program for Calculation of Complex
+  Chemical Equilibrium Compositions and Applications. I. Analysis*,
+  NASA RP-1311, NASA Lewis Research Center, Cleveland, 1994.
+- B. J. McBride y S. Gordon, *Computer Program for Calculation of Complex
+  Chemical Equilibrium Compositions and Applications. II. Users Manual
+  and Program Description*, NASA RP-1311-P2, NASA Lewis Research Center,
+  Cleveland, 1996.
+- NASA Glenn Research Center, *Chemical Equilibrium with Applications
+  (CEA)*: https://www.nasa.gov/glenn/research/chemical-equilibrium-with-applications
 - C. L. Mader, *Numerical Modeling of Explosives and Propellants*,
   3.ª ed., CRC Press, Boca Raton, 2008 (ISBN 978-1-4200-5238-1).
   Incluye un CD-ROM con los códigos FORTRAN y ejecutables de la familia
@@ -531,5 +624,243 @@ Conversión a km/s (N·s/g): `Isp [km/s] = ISP [s] · 9,80665 / 1000`.
 - B. J. McBride, M. J. Zehe y S. Gordon, *NASA Glenn Coefficients for
   Calculating Thermodynamic Properties of Individual Species*,
   NASA/TP-2002-211556, 2002 (base `thermo.inp` de CEA).
+- Frem, D. (2018). *A Reliable Method for Predicting the Specific Impulse of Chemical Propellants.*
+  Journal of Aerospace Technology and Management, 10, e3318. DOI: 10.5028/jatm.v10.945
+  (https://doi.org/10.5028/jatm.v10.945)
+
+---
+
+## Ejemplos de uso
+
+Los ejemplos de línea de comandos son para `cmd` de Windows (`^` continúa
+la línea). `C:\bkw` es la carpeta con los programas de Mader.
+
+### ISPBKW: `calcular_isp.py`
+
+**Cálculo completo con los valores por defecto**
+```bat
+python calcular_isp.py energ_mat.csv --trabajo C:\bkw
+```
+Escribe `energ_mat_ISPBKW.csv`, `_productos.csv`, `_especies.csv`,
+`_avisos.csv` y `.xlsx` junto al CSV de entrada.
+
+**Columnas con otros nombres**
+```bat
+python calcular_isp.py mis_datos.csv --trabajo C:\bkw ^
+    --col-compuesto Nombre --col-formula Form --col-deltah Hf_kcal
+```
+Útil cuando el CSV no usa `Compuesto`, `Formula` y `DeltaH`.
+
+**Densidad real de cada propelente**
+```bat
+python calcular_isp.py energ_mat.csv --trabajo C:\bkw --columna-fijo Densidad
+```
+Toma la densidad (g/cm³) de la columna `Densidad`; su efecto en el
+impulso es pequeño (término `pc·v0`).
+
+**Salidas con otro nombre o en otra carpeta**
+```bat
+python calcular_isp.py energ_mat.csv --trabajo C:\bkw --salida resultados\serie_A
+```
+Escribe `resultados\serie_A.csv`, `serie_A_productos.csv`... y `serie_A.xlsx`.
+
+**Seguir tras una interrupción**
+```bat
+python calcular_isp.py energ_mat.csv --trabajo C:\bkw --continuar
+```
+Calcula solo los casos sin resultado; se detiene si los datos han
+cambiado desde la ejecución interrumpida.
+
+**Con PowerShell 7**
+```bat
+python calcular_isp.py energ_mat.csv --trabajo C:\bkw --powershell pwsh
+```
+
+**Preparar los datos y ejecutar solo algunos casos**
+```bat
+python calcular_isp.py energ_mat.csv --trabajo C:\bkw --preparar
+cd C:\bkw
+powershell -ExecutionPolicy Bypass -File .\procesar_ispbkw.ps1 -Casos 1..5,12 -Reiniciar -Extraer
+```
+`--preparar` deja `zzzcomps` listo; el script de PowerShell calcula los
+casos indicados (útil para probar o repetir casos concretos).
+
+**Repetir un caso que ha fallado** (con `userdata` en la carpeta de
+trabajo, es decir, tras usar el script de PowerShell directamente; al
+terminar, `calcular_isp.py` la mueve a `files_…`)
+```bat
+cd C:\bkw
+del userdata\exp7.out
+powershell -ExecutionPolicy Bypass -File .\procesar_ispbkw.ps1 -Modo bkw -Casos 7 -Extraer
+```
+Vuelve a ejecutar ISPBKW sobre el fichero de entrada ya generado.
+
+**Desde Python**
+```python
+from calcular_isp import calcular_isp
+
+resumen = calcular_isp('energ_mat.csv', r'C:\bkw')
+print(resumen[['Compuesto', 'Isp_s', 'Isp_km_s', 'Tc_K', 'estado']])
+print(resumen[resumen['estado'] != 'ok'])        # casos a revisar
+```
+
+**Leer el libro de resultados**
+```python
+import pandas as pd
+
+hojas = pd.read_excel('energ_mat_ISPBKW.xlsx', sheet_name=None)
+resumen, productos = hojas['Resumen'], hojas['Productos']
+print(productos.set_index('Compuesto').loc['RDX'].filter(like='_mol_kg'))
+```
+
+### ISPBKW: paso a paso
+
+**Entalpía de entrada de un compuesto**
+```python
+from eo_0k import eo_ispbkw, correccion_0k
+
+eo_ispbkw('C3H6N6O6', 14.71)        # 33977.6 cal por fórmula (RDX)
+correccion_0k('C3H6N6O6')           # términos de la conversión 298 K -> 0 K
+```
+
+**Tabla con `eo_ISPBKW` y `zzzcomps`**
+```bat
+python eo_0k.py energ_mat.csv --salida energ_mat_eo0K.csv
+python zzzcomps.py energ_mat_eo0K.csv --columna eo_ISPBKW --salida C:\bkw\zzzcomps
+```
+
+**`zzzcomps` con `DeltaH` a 298 K** (para reproducir cálculos antiguos)
+```bat
+python zzzcomps.py energ_mat_eo0K.csv --columna DeltaH --salida C:\bkw\zzzcomps
+```
+`DeltaH` se multiplica por 1000 (kcal → cal); el impulso sale un 2 %
+más bajo de media.
+
+**Extraer resultados de una carpeta de `.out`**
+```bat
+python extraer_composicion.py C:\bkw\userdata resultados --nombres C:\bkw\zzzcomps_nombres.csv --avisos
+```
+Escribe `resultados\resultados.csv` y `resultados\avisos.csv`.
+
+**Diagnóstico de un `.out`**
+```python
+from extraer_composicion import diagnostico, iteraciones_aceptadas, delta_entalpia
+
+diagnostico('userdata/exp4.out')            # p. ej. ('ok', 'temp err (1; 3.7E-02); ...')
+iteraciones_aceptadas('userdata/exp4.out')  # residuos frente a los umbrales
+delta_entalpia('userdata/exp4.out')         # J/kg, productos - reactivo
+```
+
+### NASA CEA: `impulso_cea.py`
+
+**Cálculo del CSV con las condiciones de ISPBKW**
+```bat
+python impulso_cea.py energ_mat.csv --salida energ_mat_CEA.csv
+```
+Imprime además los estadísticos frente a `Isp_BKW` e `Isp_Doc` si el
+CSV tiene esas columnas.
+
+**Columnas con otros nombres**
+```bat
+python impulso_cea.py mis_datos.csv --col-compuesto Nombre --col-formula Form --col-deltah Hf_kcal
+```
+```python
+from impulso_cea import calcular_cea
+df = calcular_cea('mis_datos.csv', col_compuesto='Nombre', col_formula='Form',
+                  col_deltah='Hf_kcal')
+```
+
+**Otras condiciones de tobera**
+```bat
+python impulso_cea.py energ_mat.csv --pc-bar 100 --pe-bar 0.5 --salida cea_100bar.csv
+python impulso_cea.py energ_mat.csv --pamb-bar 1.01325 --pe-bar 0.2 --salida cea_sobreexpandida.csv
+```
+La segunda expande hasta 0,2 bar con 1 atm de ambiente: `Isp_amb_*`
+recoge la pérdida por sobreexpansión (o el desprendimiento) y
+`Modo_tobera_*` lo indica. Estos resultados ya no son comparables con
+ISPBKW.
+
+**Un solo propelente**
+```python
+from impulso_cea import calcular, PC_1000PSI, ATM_BAR
+
+r = calcular('RDX', 'C3H6N6O6', 14.71, PC_1000PSI, ATM_BAR)
+r['Isp_amb_Equilibrium_s'], r['T_chamber'], r['Modo_tobera_Equilibrium']
+```
+
+**Balance de energía**
+```python
+from impulso_cea import balance_energia
+
+b = balance_energia('C3H6N6O6', 14.71)                # equilibrio
+b = balance_energia('C3H6N6O6', 14.71, frozen=True)   # composición congelada
+```
+Imprime las entalpías de cámara y salida, el calor liberado y el
+rendimiento cinético `ve²/2 / Q`.
+
+**Comparar con una referencia y dibujar la paridad**
+```python
+from impulso_cea import calcular_cea, metricas, graficar_comparacion
+
+df = calcular_cea('energ_mat.csv')
+metricas(df, ref='Isp_BKW')
+graficar_comparacion(df, ref='Isp_BKW', pred='Ve_CEA_Equilibrium', ajuste=True)
+```
+
+**Sensibilidad a la presión de cámara**
+```python
+from impulso_cea import barrido_pc
+barrido_pc('energ_mat.csv', pcs=(50, 68.9476, 100, 150))
+```
+Tabla de sesgo, MAE, RMSE y R² frente a `Isp_BKW` para cada presión e
+hipótesis.
+
+**Mapa de correlaciones** (requiere las columnas `Q`, `Ng` e `Isp_BKW`)
+```python
+from impulso_cea import calcular_cea, mapa_correlaciones
+mapa_correlaciones(calcular_cea('energ_mat.csv'), hipotesis='Equilibrium', metodo='spearman')
+```
+
+**Propelente compuesto AP/Al/HTPB**
+```python
+from impulso_cea import barrido_composicion
+df = barrido_composicion(al=range(10, 22, 2), htpb=12)
+df[['AP', 'Al', 'Isp_Equilibrium_s', 'Isp_Frozen_s', 'T_chamber']]
+```
+
+**Biergol frente a la relación de mezcla**
+```python
+from impulso_cea import barrido_mr, graficar_mr
+df = barrido_mr('LOX', 'RP-1', mr=[1.8 + 0.05 * i for i in range(30)])
+graficar_mr(df, titulo='LOX/RP-1', mr_estq=3.4)
+```
+
+### ISPBKW frente a CEA
+
+**Estadísticos de la diferencia entre ambos códigos**
+```python
+import pandas as pd
+from impulso_cea import calcular_cea, estadisticos, graficar_comparacion
+
+cea = calcular_cea('energ_mat.csv')              # mismo CSV de entrada
+bkw = pd.read_csv('energ_mat_ISPBKW.csv')        # resumen de calcular_isp.py
+assert (cea['Formula'].values == bkw['Formula'].values).all()   # mismo orden
+
+df = cea.assign(Isp_ISPBKW_kms=bkw['Isp_km_s'].values)
+estadisticos(df['Ve_CEA_Equilibrium'], df['Isp_ISPBKW_kms'])
+graficar_comparacion(df, ref='Ve_CEA_Equilibrium', pred='Isp_ISPBKW_kms',
+                     titulo='ISPBKW frente a CEA (equilibrio)', ajuste=True)
+```
+Ambas salidas conservan todas las filas en el orden de la entrada (los
+casos con error quedan vacíos y `estadisticos` los ignora), así que se
+unen por posición; la comprobación de `Formula` lo garantiza. Si la
+entrada usa otro nombre para la fórmula, en `cea` es ese nombre (en el
+resumen de ISPBKW siempre es `Formula`).
+
+**Diferencia por compuesto**
+```python
+df['dif_%'] = 100 * (df['Isp_ISPBKW_kms'] / df['Ve_CEA_Equilibrium'] - 1)
+df.groupby('Tipo')['dif_%'].describe()
+df.nlargest(10, 'dif_%')[['Compuesto', 'Formula', 'dif_%']]
 
 ---
