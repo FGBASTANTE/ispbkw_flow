@@ -32,9 +32,9 @@ indican con -Casos. Antes de empezar, el script comprueba que:
   - todos los casos pedidos estan en zzzcomps (si userbkw.exe no encuentra un
     componente, pasa a modo interactivo y escribe en zzzcomps);
   - los resultados que ya hay en userdata se generaron con los mismos
-    zzzcomps, data.txt y primera linea (huella en userdata\huella.txt).
+    zzzcomps, plantilla_userbkw.txt y primera linea (huella en userdata\huella.txt).
 
-La entrada de datos a userbkw.exe proviene de data.txt. Las lineas que
+La entrada de datos a userbkw.exe proviene de plantilla_userbkw.txt. Las lineas que
 empiezan por '#' son comentarios y no se envian; el resto se envia tal cual,
 salvo las lineas 'exp1', que se sustituyen por el caso actual:
 
@@ -67,7 +67,7 @@ Para cada caso expN:
      variables sin inicializar (subroutine getcomps) y a veces la escribe con
      un valor absurdo (p. ej. 1E-31 g/cc), con el que abispbkw.exe da NaN.
      La sustitucion solo se hace si el fichero corresponde a 1 mol del
-     componente de zzzcomps (como en data.txt); si no, se avisa.
+     componente de zzzcomps (como en plantilla_userbkw.txt); si no, se avisa.
   3. abispbkw.exe: solo lee un fichero llamado 'bkwdata', asi que expN se copia
      con ese nombre y se ejecuta abispbkw.exe. Este siempre escribe 'isp.out',
      que se renombra a expN.out y se mueve a .\userdata.
@@ -88,7 +88,7 @@ userdata_AAAAMMDD_HHMMSS (no se borra nada) y se empieza de cero.
 
 El script trabaja siempre desde su propia carpeta ($PSScriptRoot), donde deben
 estar userbkw.exe, abispbkw.exe, plantilla_userbkw.txt, extraer_composicion.py, zzzcomps y
-resto de ficheros zzz (ZZZSOLEQ y ZZZTHERC).
+resto de ficheros zzz.
 
 Siempre se debe comprobar si se han procesado sin error todas las
 composiciones: el resumen final del extractor y la columna "estado" del CSV
@@ -100,12 +100,12 @@ Que ejecutables se usan:
   ambos  userbkw.exe y abispbkw.exe (por defecto)
   user   solo userbkw.exe (pasos 1 y 2)
   bkw    solo abispbkw.exe (paso 3), sobre los expN que ya existan en userdata;
-         no necesita data.txt
+         no necesita plantilla_userbkw.txt
 
 .PARAMETER Casos
 Numeros de los casos a procesar: 1..10, 3,7,12 o combinaciones como
 1..5,9 (tambien con powershell -File). Por defecto, todos los expN de
-zzzcomps (zzzcomps se puede crear a partir del módulo correspondiente).
+zzzcomps. Un caso que no este en zzzcomps detiene el script.
 
 .PARAMETER Extraer
 Si se indica, al terminar ejecuta extraer_composicion.py sobre los .out de
@@ -113,7 +113,7 @@ userdata. Es independiente de -Modo. Por defecto no se ejecuta.
 
 .PARAMETER Reiniciar
 Renombra la carpeta userdata actual a userdata_AAAAMMDD_HHMMSS y empieza con
-una carpeta vacia. Necesario si se ha cambiado zzzcomps, data.txt o la
+una carpeta vacia. Necesario si se ha cambiado zzzcomps, plantilla_userbkw.txt o la
 primera linea despues de un calculo anterior.
 
 .EXAMPLE
@@ -195,7 +195,7 @@ $exeBkw       = '.\abispbkw.exe'
 $ficheroBkw   = 'bkwdata'                    # nombre fijo que lee abispbkw.exe
 $ficheroOut   = 'isp.out'                    # nombre fijo que escribe abispbkw.exe
 $plantilla    = 'plantilla_userbkw.txt'      # plantilla de entrada de userbkw.exe
-$carpeta      = 'userdata'                   # subdirectorio para guardar expN y expN.out
+$carpeta      = 'userdata'                   # expN y expN.out
 
 $zzzcomps     = 'zzzcomps'                   # base de componentes de userbkw.exe
 $tablaNombres = 'zzzcomps_nombres.csv'       # expN <-> propelente (zzzcomps.py)
@@ -302,10 +302,10 @@ if ($Reiniciar -and (Test-Path $carpeta) -and
 }
 New-Item -ItemType Directory -Path $carpeta -Force | Out-Null
 
-# Huella de los datos de entrada: zzzcomps, data.txt y primera linea
+# Huella de los datos de entrada: zzzcomps, plantilla_userbkw.txt y primera linea
 $actual = [ordered]@{
     'zzzcomps'     = (Get-FileHash -Algorithm SHA256 -Path $rutaZzz).Hash
-    'data.txt'     = if (Test-Path $plantilla) {
+    'plantilla'    = if (Test-Path $plantilla) {
                          (Get-FileHash -Algorithm SHA256 -Path $plantilla).Hash
                      } else { '' }
     'primeraLinea' = $primeraLinea
@@ -325,7 +325,7 @@ if ($previos.Count -gt 0) {
         $guardada[$k] = $v
     }
     $comparar = @('zzzcomps', 'primeraLinea', 'version')
-    if ($ejecutaUser) { $comparar += 'data.txt' }  # en modo bkw no se usa
+    if ($ejecutaUser) { $comparar += 'plantilla' }  # en modo bkw no se usa
     $difieren = @($comparar | Where-Object { $guardada[$_] -ne $actual[$_] })
     if ($difieren.Count -gt 0) {
         Stop-Script ("Los resultados de $carpeta se generaron con otro " +
@@ -384,7 +384,7 @@ foreach ($i in $Casos) {
         #     (totwht y totvol en subroutine getcomps) y puede salir absurda.
         #     Estructura del fichero: linea 3 = m, n, nt; linea 5 = nombres de
         #     los m elementos; despues, sus moles (4 por linea, e18.11); despues,
-        #     densidad, masa y eo. Con 1 mol de un componente (data.txt), la
+        #     densidad, masa y eo. Con 1 mol de un componente (plantilla_userbkw.txt), la
         #     densidad debe ser la de zzzcomps.
         $m = [int]$contenido[2].Substring(0, 5).Trim()
         $iRho = 5 + [math]::Ceiling($m / 4)

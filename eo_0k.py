@@ -51,7 +51,7 @@ ISPBKW).
 
 Uso desde la línea de comandos::
 
-    python eo_0k.py Impulso_data.txt --salida Impulso_data_eo0K.txt
+    python eo_0k.py energ_mat.csv --salida energ_mat_eo0K.csv
 """
 
 __all__ = ['H298_H0_ELEMENTO', 'KOPP_CAL', 'CP_KOPP', 'F_CP', 'T_REF',
@@ -59,6 +59,7 @@ __all__ = ['H298_H0_ELEMENTO', 'KOPP_CAL', 'CP_KOPP', 'F_CP', 'T_REF',
            'correccion_0k', 'eo_ispbkw', 'eo_0k', 'anadir_eo_0k', 'main']
 
 import argparse
+from pathlib import Path
 
 import pandas as pd
 
@@ -221,13 +222,15 @@ def main(argv=None):
                     'partir de la entalpía de formación a 298,15 K.')
     parser.add_argument('entrada', help='CSV con columnas Formula y '
                         'DeltaH (kcal/mol a 298,15 K)')
-    parser.add_argument('--salida', default='Impulso_data_eo0K.txt',
-                        help='CSV de salida')
+    parser.add_argument('--salida', default=None,
+                        help='CSV de salida (por defecto <entrada>_eo0K.csv)')
     parser.add_argument('--f-cp', type=float, default=F_CP,
                         help='[H298 - H0] / (Cp(298) * 298,15) del '
                              'compuesto (por defecto 0,5)')
     args = parser.parse_args(argv)
-    anadir_eo_0k(args.entrada, args.f_cp).to_csv(args.salida, index=False)
+    salida = args.salida or str(
+        Path(args.entrada).with_name(Path(args.entrada).stem + '_eo0K.csv'))
+    anadir_eo_0k(args.entrada, args.f_cp).to_csv(salida, index=False)
     return 0
 
 
